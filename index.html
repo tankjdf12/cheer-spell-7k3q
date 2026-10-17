@@ -3,7 +3,7 @@
 <head><meta name="robots" content="noindex,nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sawyer's Spelling Cheer!</title>
+<title>Spelling Practice!</title>
 <style>
   :root {
     --pink: #ff4fa3; --pink-d: #e0257f; --purple: #7b3fe4; --teal: #12c2b4;
@@ -136,12 +136,27 @@
   #peekWord { font-size: 28px; color: var(--purple); min-height: 34px; }
   canvas#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
   .hold-hint { font-size: 11px; color: #a993c7; text-align: center; }
+  /* kid picker */
+  .pick-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; margin: 18px 0 8px; }
+  .kid-btn {
+    font-family: inherit; font-weight: bold; border: none; cursor: pointer; border-radius: 36px; color: #fff;
+    font-size: clamp(34px, 6vw, 56px); padding: 26px 20px 18px; min-width: min(300px, 80vw); min-height: 170px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; transition: transform .08s;
+  }
+  .kid-btn .emo { font-size: clamp(48px, 8vw, 72px); line-height: 1; }
+  .kid-btn small { font-size: 18px; font-weight: normal; opacity: .95; }
+  .kid-btn.sawyer { background: var(--pink); box-shadow: 0 9px 0 var(--pink-d); }
+  .kid-btn.lucy { background: var(--teal); box-shadow: 0 9px 0 #0a8c82; }
+  .kid-btn:active { transform: translateY(5px); }
+  .kid-btn.last::after { content: "⭐ last time"; position: absolute; top: -14px; right: 14px; background: var(--gold); color: var(--ink);
+    font-size: 15px; padding: 3px 10px; border-radius: 999px; box-shadow: 0 3px 0 #d99b00; }
+  body.kid-lucy header h1 { color: #0a8c82; }
   @media (max-width: 560px) { .pom { width: 80px; height: 80px; } .tile { width: 44px; height: 56px; font-size: 30px; line-height: 56px; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>📣 Sawyer's Spelling Cheer!</h1>
+  <h1 id="appTitle">✏️ Spelling Practice!</h1>
   <div class="hdr-right">
     <button class="icon-btn" id="muteBtn" title="Sounds on/off" aria-label="Sounds on or off">🔊</button>
     <div>
@@ -151,11 +166,23 @@
 </header>
 
 <main>
+  <!-- PICK A KID -->
+  <section class="screen active" id="screen-pick">
+    <div class="card">
+      <p class="big">Who's practicing today? 👋</p>
+      <div class="pick-row">
+        <button class="kid-btn sawyer" id="pickSawyer" data-kid="sawyer"><span class="emo">📣</span>Sawyer<small id="pickSawyerInfo"></small></button>
+        <button class="kid-btn lucy" id="pickLucy" data-kid="lucy"><span class="emo">🏐</span>Lucy<small id="pickLucyInfo"></small></button>
+      </div>
+      <p class="shortcut">Tap your name to get your spelling words!</p>
+    </div>
+  </section>
+
   <!-- START -->
-  <section class="screen active" id="screen-start">
+  <section class="screen" id="screen-start">
     <div class="card">
       <div class="poms"><svg class="pom" id="pomL"></svg><svg class="pom" id="pomR"></svg></div>
-      <p class="big">Ready, OK! Let's cheer through your spelling words, Sawyer! 🎀</p>
+      <p class="big" id="startBig">Ready, OK! Let's cheer through your spelling words, Sawyer! 🎀</p>
       <p class="sub" id="weekInfo"></p>
       <p class="sub muted" id="countInfo"></p>
       <div class="warn" id="voiceWarn"></div>
@@ -167,6 +194,7 @@
       </div>
       <label class="check" id="bonusWrap" style="display:none"><input type="checkbox" id="bonusChk"> Include bonus words ⭐</label>
       <p class="shortcut">How it works: listen to the word 👂, type it ⌨️, press <kbd>Enter</kbd> ✔</p>
+      <button class="btn ghost" id="switchKidBtn" style="display:none">👋 Not you? Switch</button>
     </div>
   </section>
 
@@ -302,14 +330,60 @@
   "streamer": "We hung a pink streamer for the party.",
   "scribble": "My baby brother likes to scribble with crayons."
  },
- "built": "2026-10-16 11:31"
+ "built": "2026-10-17 11:39"
+}</script>
+<script id="words-lucy" type="application/json">{
+ "kid": "lucy",
+ "week": "Week 11",
+ "dates": "October 19 - October 23, 2026",
+ "unit": "Kindergarten - first spelling test",
+ "test_date": "Friday, October 23, 2026",
+ "words": [
+  "at",
+  "mat",
+  "sat",
+  "we",
+  "can",
+  "ship",
+  "shop",
+  "shed",
+  "shin",
+  "shot"
+ ],
+ "bonus": [],
+ "source": "Week 11 class spelling list",
+ "sentences": {
+  "at": "We play at the park.",
+  "mat": "The cat naps on the mat.",
+  "sat": "I sat on the rug.",
+  "we": "We like to read books.",
+  "can": "I can jump high.",
+  "ship": "The big ship sails on the sea.",
+  "shop": "We shop for apples.",
+  "shed": "The rake is in the shed.",
+  "shin": "I bumped my shin on the chair.",
+  "shot": "Lucy hit a great volleyball shot."
+ },
+ "built": "2026-10-17 11:39"
 }</script>
 <script>
 (function () {
   "use strict";
-  var DATA = JSON.parse(document.getElementById("words-data").textContent);
+  /* ---------- kids: each has her own embedded list + her own localStorage prefix ---------- */
+  function readJSON(id) { try { var el = document.getElementById(id); var v = el ? JSON.parse(el.textContent) : null; return v && v.words && v.words.length ? v : null; } catch (e) { return null; } }
+  var KIDS = {
+    sawyer: { name: "Sawyer", data: readJSON("words-data"), ls: "sawyerSpelling.", title: "📣 Sawyer's Spelling Cheer!",
+      startText: "Ready, OK! Let's cheer through your spelling words, Sawyer! 🎀", pom: ["#ff4fa3", "#7b3fe4", "#12c2b4", "#ff4fa3", "#ffc531", "#ff4fa3", "#7b3fe4", "#12c2b4"], ball: false,
+      cheers: ["Go, Sawyer, go! 🎉", "S-U-P-E-R! Super! ⭐", "Give me a W! W-O-W! 🤩", "Ready, OK — that's right! 📣", "Spelling superstar! 🌟", "Two, four, six, eight, that spelling was GREAT! 🎀", "Pom-poms up! You got it! 🙌"] },
+    lucy: { name: "Lucy", data: readJSON("words-lucy"), ls: "lucySpelling.", title: "🏐 Lucy's Spelling Spike!",
+      startText: "Bump, set, SPELL! Let's practice your spelling words, Lucy! 🏐", pom: null, ball: true,
+      cheers: ["Go, Lucy, go! 🎉", "Bump, set, SPIKE! 🏐", "Ace! That's right! ⭐", "Nice serve, Lucy! 🌟", "High five! You got it! 🙌", "Point for Lucy! 🎀", "Super spelling, Lucy! 🤩"] }
+  };
+  var KID = "sawyer", NAME = "Sawyer";
+  var DATA = KIDS.sawyer.data || { week: "", dates: "", words: [], bonus: [] };
   var LS = "sawyerSpelling.";
   var LIST_ID = (DATA.week || "") + "|" + (DATA.dates || "");
+  var LAST_KID_KEY = "spellingKids.lastKid";
 
   function $(id) { return document.getElementById(id); }
   function lsGet(k, def) { try { var v = localStorage.getItem(LS + k); return v == null ? def : JSON.parse(v); } catch (e) { return def; } }
@@ -511,7 +585,7 @@
     if (first) sayWord(cur, false, true); else setTimeout(function () { sayWord(cur); }, 350);
   }
   function setFeedback(t, cls) { var f = $("feedback"); f.textContent = t; f.className = cls || ""; }
-  var CHEERS = ["Go, Sawyer, go! 🎉", "S-U-P-E-R! Super! ⭐", "Give me a W! W-O-W! 🤩", "Ready, OK — that's right! 📣", "Spelling superstar! 🌟", "Two, four, six, eight, that spelling was GREAT! 🎀", "Pom-poms up! You got it! 🙌"];
+  var CHEERS = KIDS.sawyer.cheers;
   var TRYS = ["So close! Listen again and try once more 💪", "Oops! That's OK — try again! 🌈", "Not quite yet — you've got this! 💖", "Almost! Listen carefully and give it another go ✨"];
 
   function check() {
@@ -562,7 +636,7 @@
     var pct = n ? firsts / n : 0, stars = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : 1;
     var st = $("stars"); st.innerHTML = "";
     for (var i = 0; i < 3; i++) { var s = document.createElement("span"); s.textContent = "⭐"; s.style.animationDelay = (i * 0.25) + "s"; if (i >= stars) s.className = "off"; st.appendChild(s); }
-    $("endTitle").textContent = stars === 3 ? "WOW! Spelling champion! 🏆" : stars === 2 ? "Great job, Sawyer! 🎉" : "You finished! Great practice! 💪";
+    $("endTitle").textContent = stars === 3 ? "WOW! Spelling champion! 🏆" : stars === 2 ? "Great job, " + NAME + "! 🎉" : "You finished! Great practice! 💪";
     $("endScore").textContent = "You spelled " + firsts + " out of " + n + " words right on the first try!";
     var tricky = results.filter(function (r) { return r.misses > 0; }).sort(function (a, b) { return b.misses - a.misses; });
     var ul = $("trickyList"); ul.innerHTML = "";
@@ -576,7 +650,7 @@
     lsSet("missed", { listId: LIST_ID, words: Object.keys(set).map(function (k) { return set[k]; }) });
     lastTricky = tricky.map(function (r) { return r.word; });
     SFX.cheer(); shakePoms(); confetti(160); setTimeout(function () { confetti(100); }, 900);
-    Speech.speak([stars === 3 ? "Wow! Amazing job, Sawyer!" : "Great job, Sawyer! You finished!"], 0.9);
+    Speech.speak([stars === 3 ? "Wow! Amazing job, " + NAME + "!" : "Great job, " + NAME + "! You finished!"], 0.9);
   }
   var lastTricky = [];
 
@@ -658,10 +732,61 @@
   $("testVoice").addEventListener("click", function () { Speech.speak(["sky.", "The sky is bright blue today.", "sky."]); });
   $("clearProgress").addEventListener("click", function () { lsDel("missed"); $("saveMsg").textContent = "Tricky-word list cleared ✔"; });
 
+  /* ---------- kid picker ---------- */
+  function drawBall(svg) {
+    var ns = "http://www.w3.org/2000/svg"; svg.setAttribute("viewBox", "0 0 100 100"); svg.innerHTML = "";
+    function el(tag, attrs) { var e = document.createElementNS(ns, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e; }
+    var tx = el("text", { x: 50, y: 54, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 82 }); tx.textContent = "🏐";
+  }
+  function drawArt(k) {
+    var K = KIDS[k], ids = ["pomL", "pomR", "pomL2", "pomR2"];
+    ids.forEach(function (id, i) { if (K.ball) drawBall($(id)); else drawPom($(id), K.pom[i * 2], K.pom[i * 2 + 1]); });
+  }
+  function hasLucy() { return !!KIDS.lucy.data; }
+  function setUrlKid(k) {
+    try { history.replaceState(null, "", location.pathname + (k ? "?kid=" + k : "")); } catch (e) { try { location.hash = k ? "kid=" + k : ""; } catch (e2) {} }
+  }
+  function urlKid() {
+    var m = /[?&#]kid=([a-z]+)/i.exec(location.search + location.hash) || /^#([a-z]+)$/i.exec(location.hash);
+    var k = m ? m[1].toLowerCase() : null;
+    return k && KIDS[k] && KIDS[k].data ? k : null;
+  }
+  function selectKid(k) {
+    var K = KIDS[k]; if (!K || !K.data) return;
+    Speech.stop(); clearTimeout(revealTimer); cur = null;
+    KID = k; NAME = K.name; DATA = K.data; LS = K.ls; LIST_ID = (DATA.week || "") + "|" + (DATA.dates || "");
+    CHEERS = K.cheers; lastTricky = [];
+    muted = lsGet("muted", false); Speech.rate = lsGet("rate", 0.8); if (Speech.ok) Speech.load();
+    try { localStorage.setItem(LAST_KID_KEY, k); } catch (e) {}
+    document.body.className = "kid-" + k;
+    $("appTitle").textContent = K.title; document.title = K.name + "'s Spelling Practice!";
+    $("startBig").textContent = K.startText;
+    $("switchKidBtn").style.display = hasLucy() ? "inline-block" : "none";
+    drawArt(k); setMuteIcon(); refreshStart(); show("screen-start");
+  }
+  function showPicker() {
+    Speech.stop(); clearTimeout(revealTimer); cur = null; document.body.className = "";
+    $("appTitle").textContent = "✏️ Spelling Practice!"; document.title = "Spelling Practice!";
+    var last = null; try { last = localStorage.getItem(LAST_KID_KEY); } catch (e) {}
+    ["sawyer", "lucy"].forEach(function (k) {
+      var b = $(k === "sawyer" ? "pickSawyer" : "pickLucy"), info = $(k === "sawyer" ? "pickSawyerInfo" : "pickLucyInfo"), D = KIDS[k].data;
+      b.style.display = D ? "flex" : "none";
+      b.classList.toggle("last", k === last);
+      info.textContent = D ? D.words.length + " words · " + (D.week || "") : "";
+    });
+    setUrlKid(null); show("screen-pick");
+    var lb = last && KIDS[last] && KIDS[last].data ? $(last === "sawyer" ? "pickSawyer" : "pickLucy") : null; if (lb) try { lb.focus(); } catch (e) {}
+  }
+  $("pickSawyer").addEventListener("click", function () { ac(); SFX.click(); setUrlKid("sawyer"); selectKid("sawyer"); });
+  $("pickLucy").addEventListener("click", function () { ac(); SFX.click(); setUrlKid("lucy"); selectKid("lucy"); });
+  $("switchKidBtn").addEventListener("click", function () { SFX.click(); showPicker(); });
+
   /* ---------- init ---------- */
-  drawPom($("pomL"), "#ff4fa3", "#7b3fe4"); drawPom($("pomR"), "#12c2b4", "#ff4fa3");
-  drawPom($("pomL2"), "#ffc531", "#ff4fa3"); drawPom($("pomR2"), "#7b3fe4", "#12c2b4");
-  setMuteIcon(); refreshStart();
+  window.addEventListener("hashchange", function () { var k = urlKid(); if (k) selectKid(k); });
+  var startKid = urlKid();
+  if (startKid) selectKid(startKid);
+  else if (!hasLucy()) selectKid("sawyer");
+  else showPicker();
   // voices can load late (Chrome); give them a moment before warning
   setTimeout(function () { if (Speech.ok) Speech.load(); voiceCheck(); }, 1500);
   if (!Speech.ok) voiceCheck();
