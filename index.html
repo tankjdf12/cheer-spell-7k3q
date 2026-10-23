@@ -192,6 +192,7 @@
       <div>
         <button class="btn purple" id="startMissedBtn" style="display:none"></button>
       </div>
+      <div><a class="btn ghost" id="sheetsLink" href="practice-sheets.pdf" target="_blank" rel="noopener" style="display:none;text-decoration:none">🖨️ Printable practice sheets</a></div>
       <label class="check" id="bonusWrap" style="display:none"><input type="checkbox" id="bonusChk"> Include bonus words ⭐</label>
       <p class="shortcut">How it works: listen to the word 👂, type it ⌨️, press <kbd>Enter</kbd> ✔</p>
       <button class="btn ghost" id="switchKidBtn" style="display:none">👋 Not you? Switch</button>
@@ -330,7 +331,7 @@
   "streamer": "We hung a pink streamer for the party.",
   "scribble": "My baby brother likes to scribble with crayons."
  },
- "built": "2026-10-17 11:39"
+ "built": "2026-10-23 07:41"
 }</script>
 <script id="words-lucy" type="application/json">{
  "kid": "lucy",
@@ -364,7 +365,7 @@
   "shin": "I bumped my shin on the chair.",
   "shot": "Lucy hit a great volleyball shot."
  },
- "built": "2026-10-17 11:39"
+ "built": "2026-10-23 07:41"
 }</script>
 <script>
 (function () {
@@ -761,6 +762,7 @@
     document.body.className = "kid-" + k;
     $("appTitle").textContent = K.title; document.title = K.name + "'s Spelling Practice!";
     $("startBig").textContent = K.startText;
+    $("sheetsLink").style.display = k === "sawyer" ? "inline-block" : "none";
     $("switchKidBtn").style.display = hasLucy() ? "inline-block" : "none";
     drawArt(k); setMuteIcon(); refreshStart(); show("screen-start");
   }
